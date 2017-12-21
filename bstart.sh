@@ -14,6 +14,7 @@ TIMEZONE=Asia/Shanghai
 #Cacti installation directory
 path=/var/www/html
 dir_path=$(pwd)
+mkdir -p $dir_path/container-files/packages/{rrdtool,cacti,spine}
 #Please enter the characters you want to modify, which can be chinese. After the input (input enter special characters please add in front of two escape character \\)
 rrdlogo="AMSINPUL Data\\/陕西西普数据通信股份有限公司"
 echo -e "\033[35m The RRDTOOL watermark you want to modify is:$rrdlogo \033[0m"
