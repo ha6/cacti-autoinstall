@@ -36,13 +36,34 @@ The thold plugin has been in development for well over a decade with increasing 
 
 ## ChangeLog
 
+--- 1.0.4 ---
+* issue#117: ERROR: possible illegal string offset when sending mails
+* issue#125: Thold VRules Enabling and Disabling results in a broken page
+* issue#128: Thold log date format does not align with Cacti log format
+* issue#130: Correct errors relative to mailer headers
+* issue#131: Users without permissions can disable/enable tholds
+* feature: First attempt of thresholding by data collector.  Note that if you are using the thold daemon, you will need to run on each data collector.
+* feature: Report Thold Daemon Runtime with Millisecond precision.
+* feature: Prepare for new Cacti 1.2 feature for storing RRDfiles on remote storage
+* issue: Speed thold processing by reducing queries and string manipulation
+* issue: Fully convert the thold daemon to Cacti 1.x.  Old converted thold daemon was generating MySQL 2006 errors due to a feature in PDO
+
 --- 1.0.3 ---
 * feature#34: Allow notes to be attached to thresholds and templates
+* feature: New setting for expression tholds using ifHighSpeed to handle empty ifHighSpeed entries
 * issue#81: Alert settings are mandatory, Warning is optional
 * issue#86: Undefined variable in snmptrap function
 * issue#89: Add Site to main table views
 * issue#91: Search filter not working from Thold Management
+* issue#93: Thold ID's when auto created are NOT in sequential order
 * issue#94: <DOWNTIME> not processed properly when the value has never changed
+* issue#97: Re-write logger() function to leverage subject instead of attempting to reconstruct message
+* issue#99: Thold disables itself due to division by zero for invalid RPN expressions
+* issue#104: Query using the wrong/deprecated column
+* issue#106: Sort host list by time in state, graphs, and data sources
+* issue#109: RPN Expressions fail when ifHighSpeed is set to zero
+* issue#110: Notification List duplication not implemented
+* issue#111: Default Status filter not respected on thold tab
 * issue: Baseline tholds generate SQL errors and PHP warnings
 * issue: Add test domain for i18n
 

@@ -367,8 +367,8 @@ install_cacti
 install_spine
 move_cacti
 move_config_files
-#install_plugins
-download_install_plugins
+install_plugins
+#download_install_plugins
 # Check Database Status and update if needed
 if [[ $(mysql -e "show databases" | grep cacti) != "cacti" ]]; then
     create_db
