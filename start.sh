@@ -31,6 +31,7 @@ install_dependency_packs() {
 	mkdir -p $path/logs/
 	curl -o /etc/yum.repos.d/CentOS-Base.repo -O http://mirrors.163.com/.help/CentOS7-Base-163.repo
 	rpm -Uvh http://dev.mysql.com/get/mysql-community-release-el7-5.noarch.rpm
+	rpm -Uvh https://schotty.com/yum/el/7/schotty-el7-release-7-1.noarch.rpm
 	yum clean all
 	yum makecache
 	yum install -y epel-release
@@ -40,6 +41,9 @@ install_dependency_packs() {
 	php-mysqlnd php-phpunit-PHPUnit php-pecl-xdebug php-pecl-xhprof php-snmp php-fpm  \
 	net-snmp net-snmp-utils  gcc pango-devel libxml2-devel net-snmp-devel cronie \
 	sendmail  httpd  rsyslog-mysql vim ntpdate
+	yum install -y gnumeric
+	rm -rf /etc/yum.repos.d/schotty-el7.repo
+	rm -rf /etc/yum.repos.d/mysql-community*
 	rpm -e mysql-community-release-el7-5.noarch
 	rpm --rebuilddb && yum clean all
 	\cp -rf container-files/* /
@@ -47,7 +51,7 @@ install_dependency_packs() {
 install_rrdtool() {
 	log "### Install rrdtool###"
     mkdir -p /rrdtool/ && rm -rf /rrdtool/*
-    #wget -O $dir_path/container-files/packages/rrdtool/rrdtool.tar.gz  http://oss.oetiker.ch/rrdtool/pub/rrdtool-1.7.0.tar.gz 
+    wget -O $dir_path/container-files/packages/rrdtool/rrdtool.tar.gz  http://oss.oetiker.ch/rrdtool/pub/rrdtool-1.7.0.tar.gz 
     tar zxvf /packages/rrdtool/rrdtool*.tar.gz -C /rrdtool --strip-components=1
     cd /rrdtool/
 	sed -i "s/RRDTOOL \/ TOBI OETIKER/$rrdlogo/g" src/rrd_graph.c
@@ -61,7 +65,7 @@ install_rrdtool() {
 
 install_cacti() {
 	log "### ### Install cacti"
-	# wget -O $dir_path/container-files/packages/cacti/cacti.tar.gz   http://www.cacti.net/downloads/cacti-latest.tar.gz 
+	wget -O $dir_path/container-files/packages/cacti/cacti.tar.gz   http://www.cacti.net/downloads/cacti-latest.tar.gz 
 	mkdir -p /cacti/ && rm -rf /cacti/*
 	tar zxvf /packages/cacti/cacti*.tar.gz -C /cacti --strip-components=1
     rm -rf /packages/cacti/cacti*.tar.gz
@@ -264,4 +268,113 @@ update_export_config() {
 load_temple_config(){
 	log "$(date +%F_%R) [New Install] Installing supporting template files."
 	#cp -r /templates/resource $path
+	#cp -r /templates/scripts $path
+	# install additional templates
+	for filename in /templates/*.xml; do
+	   echo "$(date +%F_%R) [New Install] Installing template file $filename"
+	   php -q $path/cli/import_template.php --with-profile --filename=$filename > /dev/null
+	done
+	rm -rf  /templates/
+	}
+
+
+
+
+install_syslog() {
+	# Create a new syslog database and grant permissions
+	mysql -e 'create database `syslog` DEFAULT CHARACTER SET utf8 COLLATE utf8_general_ci;'
+	mysql -e "GRANT ALL ON syslog.* TO 'cactiuser'@localhost IDENTIFIED BY 'cactiuser';"
+	mysql -e 'flush privileges;'
+	# Change the syslog configuration using a separate database
+	\cp -rf   $path/plugins/syslog/config.php.dist $path/plugins/syslog/config.php
+	sed -i 's/$use_cacti_db = true;/$use_cacti_db = false;/' $path/plugins/syslog/config.php
+	# Modify the rsyslog section parameters before enabling syslog
+	echo '*.* @@localhost:514' >> /etc/rsyslog.conf
+	echo '$ModLoad imudp' >> /etc/rsyslog.conf
+	echo '$ModLoad imklog' >> /etc/rsyslog.conf
+	echo '$ModLoad immark' >> /etc/rsyslog.conf
+	echo '$ModLoad imtcp' >> /etc/rsyslog.conf
+	echo '$UDPServerRun 514' >> /etc/rsyslog.conf
+	echo '$ModLoad ommysql' >> /etc/rsyslog.conf
+	echo '*.*    >localhost,syslog,cactiuser,cactiuser;cacti_syslog' >> /etc/rsyslog.conf
+	echo '*.*   /var/log/syslog.log' >> /etc/rsyslog.conf
+	systemctl enable rsyslog
+	systemctl restart rsyslog
+	}
+
+change_auth_config() {
+	log "change export auth file"
+	sed -i "/include('.\/include\/auth.php');/a include('.\/include\/global.php');" $path/graph_xport.php
+	sed -i "s/include('.\/include\/auth.php');/#include('.\/include\/auth.php');/" $path/graph_xport.php
+	sed -i "/include('.\/include\/auth.php');/a include('.\/include\/global.php');" $path/graph_image.php
+	sed -i "s/include('.\/include\/auth.php');/#include('.\/include\/auth.php');/" $path/graph_image.php
+	log "export auth file changed"
+	}
+update_cron() {
+    log "Updating Cron jobs"
+    # Add Cron jobs
+    sed -i 's#$path#'$path'#' /etc/cron.d/cacti
+    log "Crontab updated."
+	}
+set_timezone() {
+    if [[ $(grep "date.timezone = ${TIMEZONE}" /etc/php.ini) != "date.timezone = ${TIMEZONE}" ]]; then
+		log "Updating TIMEZONE"
+		echo "date.timezone = ${TIMEZONE}" >> /etc/php.ini
+		log "TIMEZONE set to: ${TIMEZONE}"
+    fi
+    rm -rf /etc/localtime
+    ln -s  /usr/share/zoneinfo/${TIMEZONE} /etc/localtime
+	sed -i 's/^.*LANG="en_US.UTF-8*$/LANG="zh_CN.UTF-8"/' /etc/locale.conf
+	}
+update_httpd() {
+    log "Updating httpd config"
+    sed -i 's#$path#'$path'#' /etc/httpd/conf.d/cacti.conf
+	
+    log "httpd config updated."
+	}
+
+# ## Magic Starts Here
+install_dependency_packs
+install_rrdtool
+install_cacti
+install_spine
+move_cacti
+move_config_files
+install_plugins
+# Check Database Status and update if needed
+if [[ $(mysql -e "show databases" | grep cacti) != "cacti" ]]; then
+    create_db
+    import_db
+    cacti_db_update
+    spine_db_update
+    change_auth_config
+fi
+# Update Cacti config
+update_cacti_db_config
+update_cacti_global_config
+update_spine_config
+update_backup_config
+update_export_config
+load_temple_config
+update_cron
+set_timezone
+update_httpd
+
+systemctl enable mysqld
+systemctl enable httpd
+systemctl enable crond
+systemctl enable snmpd
+systemctl enable redis
+systemctl restart mysqld
+systemctl restart httpd
+systemctl restart crond
+systemctl restart snmpd
+systemctl restart redis
+firewall-cmd --zone=public --add-port=80/tcp --permanent
+firewall-cmd --zone=public --add-port=3306/tcp --permanent
+firewall-cmd --reload
+setenforce 0
+sed -i 's/SELINUX=enforcing/SELINUX=disabled/g' /etc/selinux/config
+
+log "Cacti Server UP."
 	
