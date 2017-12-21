@@ -55,41 +55,41 @@ install_dependency_packs() {
         }
 install_rrdtool() {
         log "### Install rrdtool###"
-    mkdir -p /rrdtool/ && rm -rf /rrdtool/*
-    wget -O /packages/rrdtool/rrdtool.tar.gz  http://oss.oetiker.ch/rrdtool/pub/rrdtool-1.7.0.tar.gz 
-    tar zxvf /packages/rrdtool/rrdtool*.tar.gz -C /rrdtool --strip-components=1
-    cd /rrdtool/
-        sed -i "s/RRDTOOL \/ TOBI OETIKER/$rrdlogo/g" src/rrd_graph.c
-        #Modify watermark transparency
-        sed -i 's/water_color.alpha = 0.3;/water_color.alpha = 0.5;/g' src/rrd_graph.c
-        ./configure --prefix=/usr/local/rrdtool && make && make install
-    rm -rf /bin/rrdtool
-    ln -s /usr/local/rrdtool/bin/rrdtool /bin/rrdtool
-    rm -rf /packages/rrdtool/rrdtool*.tar.gz && rm -rf /rrdtool
+    		mkdir -p /rrdtool/ && rm -rf /rrdtool/*
+  	  	#wget -O /packages/rrdtool/rrdtool.tar.gz  http://oss.oetiker.ch/rrdtool/pub/rrdtool-1.7.0.tar.gz 
+    		tar zxvf /packages/rrdtool/rrdtool*.tar.gz -C /rrdtool --strip-components=1
+    		cd /rrdtool/
+        	sed -i "s/RRDTOOL \/ TOBI OETIKER/$rrdlogo/g" src/rrd_graph.c
+        	#Modify watermark transparency
+        	sed -i 's/water_color.alpha = 0.3;/water_color.alpha = 0.5;/g' src/rrd_graph.c
+        	./configure --prefix=/usr/local/rrdtool && make && make install
+    		rm -rf /bin/rrdtool
+    		ln -s /usr/local/rrdtool/bin/rrdtool /bin/rrdtool
+    		rm -rf /packages/rrdtool/rrdtool*.tar.gz && rm -rf /rrdtool
         }
 
 install_cacti() {
         log "### ### Install cacti"
-        wget -O /packages/cacti/cacti.tar.gz   http://www.cacti.net/downloads/cacti-$CACTI_VER.tar.gz 
-        mkdir -p /cacti/ && rm -rf /cacti/*
-        tar zxvf /packages/cacti/cacti*.tar.gz -C /cacti --strip-components=1
-    rm -rf /packages/cacti/cacti*.tar.gz
+        	#wget -O /packages/cacti/cacti.tar.gz   http://www.cacti.net/downloads/cacti-$CACTI_VER.tar.gz 
+        	mkdir -p /cacti/ && rm -rf /cacti/*
+        	tar zxvf /packages/cacti/cacti*.tar.gz -C /cacti --strip-components=1
+    		rm -rf /packages/cacti/cacti*.tar.gz
         }
 
 
 
 install_spine() {
         log "### ### Install spine"
-    wget -O /packages/spine/cacti-spine.tar.gz http://www.cacti.net/downloads/spine/cacti-spine-$CACTI_VER.tar.gz
-    mkdir -p /spine && rm -rf /spine/*
-    tar xf /packages/spine/cacti-spine*.tar.gz -C /spine --strip-components=1
-    rm -f /packages/spine/cacti-spine*.tar.gz
-    cd /spine/ && ./configure && make && make install
-    rm -rf /usr/bin/spine
-    ln -s /usr/local/spine/bin/spine /usr/bin/spine
-    \cp -rf /usr/local/spine/etc/spine.conf.dist /etc/spine.conf
-    rm -rf /spine
-    yum clean all
+    		#wget -O /packages/spine/cacti-spine.tar.gz http://www.cacti.net/downloads/spine/cacti-spine-$CACTI_VER.tar.gz
+    		mkdir -p /spine && rm -rf /spine/*
+    		tar xf /packages/spine/cacti-spine*.gz -C /spine --strip-components=1
+    		rm -f /packages/spine/cacti-spine*.tar.gz
+    		cd /spine/ && ./configure && make && make install
+    		rm -rf /usr/bin/spine
+    		ln -s /usr/local/spine/bin/spine /usr/bin/spine
+    		\cp -rf /usr/local/spine/etc/spine.conf.dist /etc/spine.conf
+    		rm -rf /spine
+    		yum clean all
         }
 
 
@@ -167,7 +167,6 @@ download_install_plugins() {
         fi
         if [ ! -d "hmib" ]; then
                 git clone https://github.com/Cacti/plugin_hmib.git
-        if [ ! -d "gexport" ]; then
         fi
         if [ ! -d "mikrotik" ]; then
                 git clone https://github.com/Cacti/plugin_mikrotik.git
