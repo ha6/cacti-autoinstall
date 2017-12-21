@@ -17,6 +17,7 @@
 # http://babyfenei.blog.51cto.com
   
 #!/bin/bash
+DBNAME="cacti"
 ADDRESS="$DB_ADDRESS"
 USERNAME="$DB_USER"           #数据库用户名
 PASSWORD="$DB_PASS"    #数据库密码     
@@ -28,14 +29,14 @@ select_db_sql="select replace(replace(replace(title_cache,'/','-'),' ',''),'*','
 from graph_tree_items left join graph_templates_graph 
 on graph_templates_graph.local_graph_id=graph_tree_items.local_graph_id 
 where graph_tree_items.local_graph_id <> 0 order by 'id' desc"
-echo ${select_db_sql}  | ${MYSQL_CMD} cacti > /tmp/export.log              #查询图形树表中的图形ID非0的数据并将结果保存至下载列表                   
+echo ${select_db_sql}  | ${MYSQL_CMD}  ${DBNAME}    > /tmp/export.log              #查询图形树表中的图形ID非0的数据并将结果保存至下载列表                   
                                                                                  #判断是否创建成功
 if [ $? -ne 0 ]
 then
- echo "select databases cacti failed ..." >>/var/log/export/log              #数据库查询失败时将添加失败日志到日志文件中
+ echo "select databases ${DBNAME} failed ..." >>/var/log/export.log              #数据库查询失败时将添加失败日志到日志文件中
 fi
   
-mkdir -p /var/www/export  
+mkdir -p /var/www/export
 cd /var/www/export
 #此命令为指定导出文件所在目录，可根据需求更改。如不指定的话会造成下载到root目录。
   
@@ -46,55 +47,73 @@ mkdir -p $(date -d 1 +%Y/%m/%d/data)
 mkdir -p $(date -d 1 +%Y/%m/month/data)
   
 #Cacti网址阐述 这里必须在后面加'/'号 否则报错
-URL="http://localhost/"
+URL="http://localhost/cacti/"
 #获取当日日期  判断是否是1号
 DAY=`date +%d`
-  
-  
+ENT=`date +%s`
+DSTT=`date +%s -d'-1 day'`
+MSTT=`date +%s -d'-1 month'`
+
+#删除不需要下载的图形（匹配特定字符）
+sed -e '/ceshi/d;/ifAlias/d' /tmp/export.log > /tmp/export.list
+ 
 #下载日流量图
   
-cat /tmp/export.log | awk 'NR>1' | while read name id
+cat /tmp/export.list | awk 'NR>1' | while read name id
 do
-wget "${URL}graph_image.php?local_graph_id=${id}&rra_id=1" -O $(date -d 1 +%Y/%m/%d/image/)${name}.jpg
+wget "${URL}graph_image.php?local_graph_id=${id}&graph_start=${DSTT}&graph_end=${ENT}" -O $(date -d 1 +%Y/%m/%d/image/)${name}.jpg
 done
   
   
 #下载月流量图
  
-cat /tmp/export.log | awk 'NR>1' | while read name id
+cat /tmp/export.list | awk 'NR>1' | while read name id
 do
-echo "$name" | grep -q "("                                        
-if [ $? -eq 0 ]; then                                                 #判断下载文件名中是否包含()
-day=$(echo $name|grep -Po '(?<=\()[^()]+(?=\))')                      #如果()存在，则将()内的内容赋值给变量day
-        if [ "$DAY" = "$day" ];then                                     #如果day也即()内的日期和当前日期一样。则下载此条数据
-        wget "${URL}graph_image.php?local_graph_id=${id}&rra_id=3" -O $(date -d 1 +%Y/%m/month/image/)${name}.jpg
-        fi
-elif  [ "$DAY" = 01 ];then
-wget "${URL}graph_image.php?local_graph_id=${id}&rra_id=3" -O $(date -d 1 +%Y/%m/month/image/)${name}.jpg
-fi
- 
+	if [ "$DAY" = 01 ];then
+		wget "${URL}graph_image.php?local_graph_id=${id}&graph_start=${MSTT}&graph_end=${ENT}" -O $(date -d 1 +%Y/%m/month/image/)${name}.jpg
+	fi
 done
   
   
-#下载日流量数据表
-  
 cat /tmp/export.log | awk 'NR>1' | while read name id
 do
-wget "${URL}graph_xport.php?local_graph_id=${id}&rra_id=1" -O $(date -d 1 +%Y/%m/%d/data/)${name}.xls
+	echo "$name" | grep -q "("                                        
+	if [ $? -eq 0 ]; then                                                 #判断下载文件名中是否包含()
+		day=$(echo $name|grep -Po '(?<=\()[^()]+(?=\))')                      #如果()存在，则将()内的内容赋值给变量day
+		if [ "$DAY" = "$day" ];then                                     #如果day也即()内的日期和当前日期一样。则下载此条数据
+			wget "${URL}graph_image.php?local_graph_id=${id}&graph_start=${MSTT}&graph_end=${ENT}" -O $(date -d 1 +%Y/%m/month/image/)${name}.jpg
+		fi
+	elif  [ "$DAY" = 01 ];then
+		wget "${URL}graph_image.php?local_graph_id=${id}&graph_start=${MSTT}&graph_end=${ENT}" -O $(date -d 1 +%Y/%m/month/image/)${name}.jpg
+	fi 
+done  
+
+  
+#下载日流量数据表
+  
+cat /tmp/export.list | awk 'NR>1' | while read name id
+do
+	wget "${URL}graph_xport.php?local_graph_id=${id}&graph_start=${DSTT}&graph_end=${ENT}" -O $(date -d 1 +%Y/%m/%d/data/)${name}.csv
+	ssconvert $(date -d 1 +%Y/%m/%d/data/)${name}.csv $(date -d 1 +%Y/%m/%d/data/)${name}.xls
+	rm -rf $(date -d 1 +%Y/%m/%d/data/)${name}.csv
 done
   
   
 #下载月流量数据表
- 
+
 cat /tmp/export.log | awk 'NR>1' | while read name id
 do
-echo "$name" | grep -q "("
-if [ $? -eq 0 ]; then                                                 #判断下载文件名中是否包含()
-day=$(echo $name|grep -Po '(?<=\()[^()]+(?=\))')                      #如果()存在，则将()内的内容赋值给变量day
-        if [ "$DAY" = "$day" ];then                                        #如果day也即()内的日期和当前日期一样。则下载此条数据
-        wget "${URL}graph_xport.php?local_graph_id=${id}&rra_id=3" -O $(date -d 1 +%Y/%m/month/data/)${name}.xls
-        fi
-elif [ "$DAY" = 01 ];then
-wget "${URL}graph_xport.php?local_graph_id=${id}&rra_id=3" -O $(date -d 1 +%Y/%m/month/data/)${name}.xls
-fi
+	echo "$name" | grep -q "("
+	if [ $? -eq 0 ]; then                                                 #判断下载文件名中是否包含()，此命令用于个别图形月流量图在指定日期下载。
+		day=$(echo $name|grep -Po '(?<=\()[^()]+(?=\))')                      #如果()存在，则将()内的内容赋值给变量day
+		if [ "$DAY" = "$day" ];then                                        #如果day也即()内的日期和当前日期一样。则下载此条数据
+			wget "${URL}graph_xport.php?local_graph_id=${id}&graph_start=${MSTT}&graph_end=${ENT}" -O $(date -d 1 +%Y/%m/month/image/)${name}.csv
+			ssconvert $(date -d 1 +%Y/%m/month/image/)${name}.csv $(date -d 1 +%Y/%m/month/image/)${name}.xls
+			rm -rf $(date -d 1 +%Y/%m/month/image/)${name}.csv
+		fi
+	elif [ "$DAY" = 01 ];then
+		wget "${URL}graph_xport.php?local_graph_id=${id}&graph_start=${MSTT}&graph_end=${ENT}" -O $(date -d 1 +%Y/%m/month/image/)${name}.csv
+		ssconvert $(date -d 1 +%Y/%m/month/image/)${name}.csv $(date -d 1 +%Y/%m/month/image/)${name}.xls
+		rm -rf $(date -d 1 +%Y/%m/month/image/)${name}.csv
+	fi
 done
