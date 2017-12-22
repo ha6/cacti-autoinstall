@@ -35,23 +35,22 @@ log() {
 
 install_dependency_packs() {
         log "Install dependency packs"
-        mkdir -p $path/logs/
-        curl -o /etc/yum.repos.d/CentOS-Base.repo -O http://mirrors.163.com/.help/CentOS6-Base-163.repo
-        rpm -Uvh http://dev.mysql.com/get/mysql-community-release-el7-5.noarch.rpm
-        rpm -Uvh https://schotty.com/yum/el/7/schotty-el7-release-7-1.noarch.rpm
-	yum install -y epel-release
-	yum clean all
-        yum makecache
-        yum install -y  perl-devel  php-gmp php-opcache php-devel php-mbstring php-mcrypt php-mysql php-phpunit-PHPUnit \
-        php-gd php-ldap php-mbstring php-mcrypt php-pecl-xdebug php-pecl-xhprof php-opcache php-pecl-redis php-redis \
-        php-pecl-xdebug php-pecl-xhprof php-snmp
-        yum install -y automake mysql mysql-devel mysql-server  gnumeric  wget gzip help2man libtool make net-snmp-devel \
-        m4  openssl-devel dos2unix   redis      \
-        dejavu-fonts-common dejavu-lgc-sans-mono-fonts dejavu-sans-mono-fonts   \
-        net-snmp net-snmp-utils  gcc pango-devel libxml2-devel net-snmp-devel cronie \
-        sendmail  httpd  rsyslog-mysql vim ntpdate
-        rpm --rebuilddb && yum clean all
-        \cp -rf container-files/* /
+       		mkdir -p $path/logs/
+        	curl -o /etc/yum.repos.d/CentOS-Base.repo -O http://mirrors.163.com/.help/CentOS6-Base-163.repo
+        	rpm -Uvh http://dev.mysql.com/get/mysql-community-release-el7-5.noarch.rpm
+        	rpm -Uvh https://schotty.com/yum/el/7/schotty-el7-release-7-1.noarch.rpm
+		rpm -Uvh http://rpms.famillecollet.com/enterprise/remi-release-7.rpm
+		yum install -y epel-release
+		yum clean all
+        	yum makecache
+		yum install --enablerepo=remi --enablerepo=remi-php56 php php-redis php-snmp php-opcache php-devel php-mbstring php-mcrypt php-mysqlnd php-phpunit-PHPUnit php-pecl-xdebug php-pecl-xhprof  php-gmp
+        	yum install -y mysql-community-server mysql-community-client  mysql-devel 
+		yum install -y automake perl-devel  gnumeric  wget gzip help2man libtool make net-snmp-devel m4 openssl-devel dos2unix redis \
+        	dejavu-fonts-common dejavu-lgc-sans-mono-fonts dejavu-sans-mono-fonts   \
+        	net-snmp net-snmp-utils  gcc pango-devel libxml2-devel net-snmp-devel cronie \
+        	sendmail  httpd  rsyslog-mysql vim ntpdate perl-devel
+        	rpm --rebuilddb && yum clean all
+        	\cp -rf container-files/* /
         }
 install_rrdtool() {
         log "### Install rrdtool###"
@@ -99,8 +98,7 @@ move_cacti() {
                 log "Moving Cacti into Web Directory"
                 rm -rf $path/*
                 \cp -rf  /cacti/* $path/
-                mkdir -p $path/log
-		mkdir -p $path/cache
+                mkdir -p $path/{log,cache}
                 touch $path/log/cacti.log
                 chown -R apache:apache $path
                 # If you need to open the URL directly, cacti does not need to add the suffix pattern of http://url/cacti You need cancels the downlink annotation to make it run
@@ -383,7 +381,7 @@ update_cacti_global_config
 update_spine_config
 update_backup_config
 update_export_config
-install_syslog
+#install_syslog
 load_temple_config
 update_cron
 update_httpd
