@@ -296,7 +296,7 @@ load_temple_config(){
         # install additional templates
         for filename in /templates/*.xml; do
            echo "$(date +%F_%R) [New Install] Installing template file $filename"
-           php -q $path/cli/import_template.php --filename=$filename --with-template-rras > /dev/null
+           php -q $path/cli/import_template.php --filename=$filename  > /dev/null
         done
         rm -rf  /templates/
         }
