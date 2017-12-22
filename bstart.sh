@@ -139,7 +139,7 @@ download_install_plugins() {
         mkdir -p $dir_path/container-files/plugins/
         cd $dir_path/container-files/plugins/
         #git clone https://github.com/Cacti/plugin_syslog.git
-        if [ ! -d "monitor" ]; then
+                if [ ! -d "monitor" ]; then
                 git clone https://github.com/Cacti/plugin_monitor.git
                 mv plugin_monitor monitor
         fi
@@ -165,7 +165,8 @@ download_install_plugins() {
         fi
         if [ ! -d "hmib" ]; then
                 git clone https://github.com/Cacti/plugin_hmib.git
-        fi
+        	mv plugin_hmib hmib
+	fi
         if [ ! -d "mikrotik" ]; then
                 git clone https://github.com/Cacti/plugin_mikrotik.git
                 mv plugin_mikrotik mikrotik
@@ -185,11 +186,15 @@ download_install_plugins() {
         if [ ! -d "rrdproxy" ]; then
                 git clone https://github.com/Cacti/rrdproxy.git
         fi
+        if [ ! -d "syslog" ]; then
+                git clone https://github.com/Cacti/plugin_syslog.git
+                mv plugin_syslog syslog
+        fi 
         if [ ! -d "reportit" ]; then
                 git clone https://github.com/Cacti/plugin_reportit.git
                 mv plugin_reportit reportit
         fi
-        #for i in plugin_*; do mv $i ${i#plugin_}; done > /dev/null 2>&1
+	#for i in plugin_*; do mv $i ${i#plugin_}; done > /dev/null 2>&1
         \cp -rf   * $path/plugins/
         log "The Cacti plug-in installation is complete"
         }

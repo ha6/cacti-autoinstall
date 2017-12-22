@@ -25,8 +25,9 @@
 function webseer_show_tab($current_tab) {
 	global $config;
 	$tabs = array(
-		'webseer.php'         => __('Checks'),
-		'webseer_servers.php' => __('Servers')
+		'webseer.php'         => __('Checks', 'webseer'),
+		'webseer_servers.php' => __('Servers', 'webseer'),
+		'webseer_proxies.php' => __('Proxies', 'webseer')
 	);
 
 	print "<div class='tabs'><nav><ul>\n";
@@ -60,11 +61,12 @@ function plugin_webseer_refresh_servers() {
 					db_execute_prepared('REPLACE INTO plugin_webseer_servers (id, enabled, master, name, url, ip, location)
 						VALUES (?,?,?,?,?,?,?)',
 						array(
-							$save['id'], $save['enabled'], $save['master'], $save['name'], $save['url'], $save['ip'] , $save['location'] 
+							$save['id'], $save['enabled'], $save['master'], $save['name'], $save['url'], $save['ip'] , $save['location']
 						)
 					);
 				}
 			}
+
 			break;
 		}
 	}
@@ -87,11 +89,14 @@ function plugin_webseer_refresh_urls () {
 			if (isset($urls[0]['id'])) {
 				db_execute('TRUNCATE TABLE plugin_webseer_urls');
 				foreach ($urls as $save) {
-					db_execute_prepared('REPLACE INTO plugin_webseer_urls (id, enabled, requiresauth, checkcert, ip, display_name, notify_accounts, url, search, search_maint, search_failed, notify_extra, downtrigger)
+					db_execute_prepared('REPLACE INTO plugin_webseer_urls
+						(id, enabled, requiresauth, checkcert, ip, display_name, notify_accounts, url, search, search_maint, search_failed, notify_extra, downtrigger)
 						VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)',
 						array(
-							$save['id'], $save['enabled'], $save['requiresauth'], $save['checkcert'], $save['ip'], $save['display_name'], $save['notify_accounts'],
-							$save['url'], $save['search'], $save['search_maint'], $save['search_failed'], $save['notify_extra'], $save['downtrigger']
+							$save['id'], $save['enabled'], $save['requiresauth'], $save['checkcert'],
+							$save['ip'], $save['display_name'], $save['notify_accounts'],
+							$save['url'], $save['search'], $save['search_maint'],
+							$save['search_failed'], $save['notify_extra'], $save['downtrigger']
 						)
 					);
 				}
@@ -296,7 +301,13 @@ class cURL {
 	var $user_agent;
 	var $compression;
 	var $cookie_file;
-	var $proxy;
+
+	var $proxy_hostname;
+	var $proxy_http_port;
+	var $proxy_https_port;
+	var $proxy_username;
+	var $proxy_password;
+
 	var $results;
 	var $error;
 	var $host;
@@ -305,19 +316,19 @@ class cURL {
 	var $httperrors;
 	var $debug;
 
-	function __construct($cookies = true, $cookie = 'cookies.txt', $compression = 'gzip', $proxy = '') {
+	function __construct($cookies = true, $cookie = 'cookies.txt', $compression = 'gzip', $proxy_hostname = '') {
 		global $config, $httperrors, $debug;
 
 //		$this->headers[] = 'Accept: image/gif, image/x-bitmap, image/jpeg, image/pjpeg';
 //		$this->headers[] = 'Connection: Keep-Alive';
 //		$this->headers[] = 'Content-type: application/x-www-form-urlencoded;charset=UTF-8';
 
-		$this->user_agent  = 'Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 5.1; .NET CLR 1.0.3705; .NET CLR 1.1.4322)';
-		$this->compression = $compression;
-		$this->proxy       = $proxy;
-		$this->httperrors  = $httperrors;
-		$this->cookies     = $cookies;
-		$this->debug       = $debug;
+		$this->user_agent     = 'Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 5.1; .NET CLR 1.0.3705; .NET CLR 1.1.4322)';
+		$this->compression    = $compression;
+		$this->proxy_hostname = $proxy_hostname;
+		$this->httperrors     = $httperrors;
+		$this->cookies        = $cookies;
+		$this->debug          = $debug;
 
 		if ($this->cookies === true){
 			$this->cookie($cookie);
@@ -347,10 +358,10 @@ class cURL {
 		$this->headers[] = 'Content-type: application/x-www-form-urlencoded;charset=UTF-8';
 
 		curl_setopt($process, CURLOPT_HTTPHEADER, $this->headers);
-		curl_setopt($process, CURLOPT_HEADER, 1);
+		curl_setopt($process, CURLOPT_HEADER, true);
 		curl_setopt($process, CURLOPT_USERAGENT, $this->user_agent);
 
-//		curl_setopt($process, CURLOPT_ENCODING , $this->compression);
+		// curl_setopt($process, CURLOPT_ENCODING , $this->compression);
 
 		curl_setopt($process, CURLOPT_TIMEOUT, 4);
 
@@ -361,9 +372,9 @@ class cURL {
 
 		$data = implode('&', $d);
 		curl_setopt($process, CURLOPT_POSTFIELDS, $data);
-		curl_setopt($process, CURLOPT_RETURNTRANSFER, 1);
-		curl_setopt($process, CURLOPT_FOLLOWLOCATION, 1);
-		curl_setopt($process, CURLOPT_POST, 1);
+		curl_setopt($process, CURLOPT_RETURNTRANSFER, true);
+		curl_setopt($process, CURLOPT_FOLLOWLOCATION, true);
+		curl_setopt($process, CURLOPT_POST, true);
 		$return = curl_exec($process);
 		curl_close($process);
 
@@ -382,34 +393,48 @@ class cURL {
 		$url = $this->host['url'];
 
 		$process = curl_init($url);
-		if ($this->host['ip'] != '') {
-			curl_setopt($process, CURLOPT_PROXY, $this->host['ip']); 
+
+		if ($this->proxy_hostname != '') {
+			if ($this->proxy_http_port == '') {
+				$this->proxy_http_port = 80;
+			}
+
+			if ($this->proxy_https_port == '') {
+				$this->proxy_https_port = 443;
+			}
+
+			curl_setopt($process, CURLOPT_UNRESTRICTED_AUTH, true);
+			curl_setopt($process, CURLOPT_PROXY, $this->proxy_hostname);
+
 			if (substr(strtolower($url), 0, 5) == 'https') {
-				curl_setopt($process, CURLOPT_PROXYPORT, 443); 
+				curl_setopt($process, CURLOPT_PROXYPORT, $this->proxy_https_port);
 			} else {
-				curl_setopt($process, CURLOPT_PROXYPORT, 80); 
+				curl_setopt($process, CURLOPT_PROXYPORT, $this->proxy_http_port);
+			}
+
+			if ($this->proxy_username != '') {
+				curl_setopt($process, CURLOPT_PROXYUSERPWD, $this->proxy_username . ':' . $this->proxy_password);
 			}
 		}
 
-		curl_setopt($process, CURLOPT_HEADER, 1);
+		curl_setopt($process, CURLOPT_HEADER, true);
 		curl_setopt($process, CURLOPT_USERAGENT, $this->user_agent);
 
-//		curl_setopt($process, CURLOPT_ENCODING , $this->compression);
+		// curl_setopt($process, CURLOPT_ENCODING , $this->compression);
 
-		curl_setopt($process, CURLOPT_RETURNTRANSFER, 1);
-		curl_setopt($process, CURLOPT_FOLLOWLOCATION, 1);
+		curl_setopt($process, CURLOPT_RETURNTRANSFER, true);
+		curl_setopt($process, CURLOPT_FOLLOWLOCATION, true);
 		curl_setopt($process, CURLOPT_MAXREDIRS, 4);
 
-//		 curl_setopt($process,     CURLOPT_VERBOSE, 1);
+		// curl_setopt($process,     CURLOPT_VERBOSE, 1);
 
 		curl_setopt($process, CURLOPT_TIMEOUT, $this->host['timeout_trigger']);
 
-//		if ($this->cookies == TRUE) curl_setopt($process, CURLOPT_COOKIEFILE, $this->cookie_file);
-//		if ($this->cookies == TRUE) curl_setopt($process, CURLOPT_COOKIEJAR, $this->cookie_file);
-//		if ($this->proxy) curl_setopt($process, CURLOPT_PROXY, 'proxy_ip:proxy_port');
+		// if ($this->cookies == TRUE) curl_setopt($process, CURLOPT_COOKIEFILE, $this->cookie_file);
+		// if ($this->cookies == TRUE) curl_setopt($process, CURLOPT_COOKIEJAR, $this->cookie_file);
 
 		if ($this->host['requiresauth'] == '') {
-			curl_setopt($process, CURLOPT_FAILONERROR, ($this->host['requiresauth'] == '' ? true : false)); 
+			curl_setopt($process, CURLOPT_FAILONERROR, ($this->host['requiresauth'] == '' ? true : false));
 		}
 
 		// curl_setopt($process, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_0);
@@ -420,6 +445,7 @@ class cURL {
 			curl_setopt($process, CURLOPT_SSL_VERIFYPEER, FALSE);
 			curl_setopt($process, CURLOPT_SSL_VERIFYHOST, FALSE);
 		}
+
 		curl_setopt($process, CURLOPT_CAINFO, $this->bundle);
 
 		$data = curl_exec($process);
@@ -443,6 +469,7 @@ class cURL {
 
 				break;
 		}
+
 		curl_close($process);
 
 		// If we have set a failed search string, then ignore the normal searches and only alert on it
@@ -555,7 +582,7 @@ class mxlookup {
 		$byte   = ord($this->gdi($this->cIx));
 
 		while($byte !== 0) {
-			if ($byte == 192) { //compressed 
+			if ($byte == 192) { //compressed
 				$tmpIx = $this->cIx;
 				$this->cIx = ord($this->gdi($cIx));
 				$tmpName = $retval;
@@ -610,7 +637,7 @@ class mxlookup {
 	}
 
 	function pack_dns_packet() {
-		$this->dns_packet = 
+		$this->dns_packet =
 			chr(0).chr(1).
 			chr(1).chr(0).
 			chr(0).chr(1).

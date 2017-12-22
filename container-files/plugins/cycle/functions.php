@@ -22,7 +22,7 @@
  +-------------------------------------------------------------------------+
 */
 
-$graphs_array = array(
+$graphs_ppage = array(
     1   => __('%d Graph', 1, 'cycle'),
     2   => __('%d Graphs', 2, 'cycle'),
     4   => __('%d Graphs', 4, 'cycle'),
@@ -68,34 +68,40 @@ function save_settings() {
 	validate_request_vars();
 
 	if (sizeof($_REQUEST)) {
-	foreach($_REQUEST as $var => $value) {
-		switch($var) {
-		case 'timespan':
-			set_user_setting('cycle_timespan', get_request_var('timespan'));
-			break;
-		case 'refresh':
-			set_user_setting('cycle_delay', get_request_var('refresh'));
-			break;
-		case 'graphs':
-			set_user_setting('cycle_graphs', get_request_var('graphs'));
-			break;
-		case 'cols':
-			set_user_setting('cycle_columns', get_request_var('cols'));
-			break;
-		case 'height':
-			set_user_setting('cycle_height', get_request_var('height'));
-			break;
-		case 'width':
-			set_user_setting('cycle_width', get_request_var('width'));
-			break;
-		case 'legend':
-			set_user_setting('cycle_legend', get_request_var('legend'));
-			break;
-		case 'filter':
-			set_user_setting('cycle_filter', get_request_var('filter'));
-			break;
+		foreach($_REQUEST as $var => $value) {
+			switch($var) {
+			case 'timespan':
+				set_user_setting('cycle_timespan', get_request_var('timespan'));
+				break;
+			case 'refresh':
+				set_user_setting('cycle_delay', get_request_var('refresh'));
+				break;
+			case 'graphs':
+				set_user_setting('cycle_graphs', get_request_var('graphs'));
+				break;
+			case 'cols':
+				set_user_setting('cycle_columns', get_request_var('cols'));
+				break;
+			case 'height':
+				set_user_setting('cycle_height', get_request_var('height'));
+				break;
+			case 'width':
+				set_user_setting('cycle_width', get_request_var('width'));
+				break;
+			case 'legend':
+				if ($value == 'true') {
+					$value = 'on';
+				} else {
+					$value = '';
+				}
+
+				set_user_setting('cycle_legend', $value);
+				break;
+			case 'rfilter':
+				set_user_setting('cycle_filter', get_request_var('rfilter'));
+				break;
+			}
 		}
-	}
 	}
 
 	validate_request_vars(true);
@@ -142,12 +148,11 @@ function validate_request_vars($force = false) {
 			),
 		'legend' => array(
 			'filter' => FILTER_CALLBACK,
-			'pageset' => true,
 			'default' => read_user_setting('cycle_legend', read_config_option('cycle_legend'), $force),
 			'options' => array('options' => 'sanitize_search_string')
 			),
-		'filter' => array(
-			'filter' => FILTER_CALLBACK,
+		'rfilter' => array(
+			'filter' => FILTER_VALIDATE_IS_REGEX,
 			'pageset' => true,
 			'default' => read_user_setting('cycle_filter', '', $force),
 			'options' => array('options' => 'sanitize_search_string')
@@ -172,15 +177,24 @@ function cycle_set_defaults() {
 			'cycle_font_size'  => '8',
 			'cycle_font_face'  => '',
 			'max_length'       => '100',
+			'cycle_filter'     => '',
 			'cycle_font_color' => '1',
 			'cycle_legend'     => '',
 			'cycle_custom_graphs_type' => '2'
 		);
 
 		foreach($defaults as $name => $value) {
-			$current = db_fetch_cell("SELECT value FROM settings_user WHERE name='$name' AND user_id=$user");
+			$current = db_fetch_cell_prepared('SELECT value 
+				FROM settings_user 
+				WHERE name = ?
+				AND user_id = ?', 
+				array($name, $user));
+
 			if ($current === false) {
-				db_execute("REPLACE INTO settings_user (user_id,name,value) VALUES ($user, '$name', '$value')");
+				db_execute_prepared('REPLACE INTO settings_user 
+					(user_id, name, value) 
+					VALUES (?, ?, ?)', 
+					array($user, $name, $value));
 			}
 		}
 
@@ -209,7 +223,9 @@ function get_next_graphid($graphpp, $filter, $graph_tree, $leaf_id) {
 
 		$sql_where = "WHERE gl.id>=$graph_id";
 
-		if (strlen($filter)) $sql_where .= (strlen($sql_where) ? ' AND':'WHERE') . " gtg.title_cache RLIKE '$filter'";
+		if ($filter != '') {
+			$sql_where .= (strlen($sql_where) ? ' AND':'WHERE') . " gtg.title_cache RLIKE '$filter'";
+		}
 
 		if ($type == 1) {
 			$cases = explode(',', read_config_option('cycle_custom_graphs_list'));
@@ -219,9 +235,12 @@ function get_next_graphid($graphpp, $filter, $graph_tree, $leaf_id) {
 				$newcase .= (is_numeric($case) ? (strlen($newcase) ? ',':'') . $case:'');
 			}
 
-			if (strlen($newcase)) $sql_where .= (strlen($sql_where) ? ' AND':'WHERE') . " gl.id IN($newcase)";
+			if (strlen($newcase)) {
+				$sql_where .= (strlen($sql_where) ? ' AND':'WHERE') . " gl.id IN($newcase)";
+			}
 		}elseif ($type == 2) {
-			$graph_data = get_tree_graphs($graph_tree, $leaf_id);
+			$newcase         = '';
+			$graph_data      = get_tree_graphs($graph_tree, $leaf_id);
 			$local_graph_ids = array();
 
 			if (sizeof($graph_data)) {
@@ -319,13 +338,13 @@ function get_next_graphid($graphpp, $filter, $graph_tree, $leaf_id) {
 			$sql_where = '';
 
 			/* setup the standard filters less the starting range, in other words start from the first graph */
-			if (strlen($filter)) $sql_where .= (strlen($sql_where) ? ' AND':'WHERE') . " gtg.title_cache RLIKE '$filter'";
+			if ($filter != '') {
+				$sql_where .= (strlen($sql_where) ? ' AND':'WHERE') . " gtg.title_cache RLIKE '$filter'";
+			}
 
 			if (isset($local_graph_ids) && sizeof($local_graph_ids)) {
 				$sql_where .= (strlen($sql_where) ? ' AND':'WHERE') . ' gl.id IN(' . implode(',', $local_graph_ids) . ')';
 			}
-
-			if (isset($newcase) && strlen($newcase)) $sql_where .= (strlen($sql_where) ? ' AND':'WHERE') . " gtg.title_cache RLIKE '$filter'";
 
 			$start      = 0;
 			$done       = false;
@@ -386,16 +405,16 @@ function get_next_graphid($graphpp, $filter, $graph_tree, $leaf_id) {
 		 * we reach the $graphpp variable or until we run out of rows.  We
 		 * also have to adjust for underflow in this case.
 		 */
-		$sql_where = "WHERE gl.id<$graph_id";
+		$sql_where = "WHERE gl.id < $graph_id";
 
 		/* setup the standard filters less the starting range, in other words start from the first graph */
-		if (strlen($filter)) $sql_where .= (strlen($sql_where) ? ' AND':'WHERE') . " gtg.title_cache RLIKE '$filter'";
+		if ($filter != '') {
+			$sql_where .= (strlen($sql_where) ? ' AND':'WHERE') . " gtg.title_cache RLIKE '$filter'";
+		}
 
 		if (isset($local_graph_ids) && sizeof($local_graph_ids)) {
 			$sql_where .= (strlen($sql_where) ? ' AND':'WHERE') . ' gl.id IN(' . implode(',', $local_graph_ids) . ')';
 		}
-
-		if (isset($newcase) && strlen($newcase)) $sql_where .= (strlen($sql_where) ? ' AND':'WHERE') . " gtg.title_cache RLIKE '$filter'";
 
 		$done    = false;
 		$start   = 0;
@@ -441,7 +460,10 @@ function get_next_graphid($graphpp, $filter, $graph_tree, $leaf_id) {
 		 */
 		if ($prev_graph_id == 0) {
 			$sql_where = '';
-			if (strlen($filter)) $sql_where .= (strlen($sql_where) ? ' AND':'WHERE') . " gtg.title_cache RLIKE '$filter'";
+
+			if ($filter != '') {
+				$sql_where .= (strlen($sql_where) ? ' AND':'WHERE') . " gtg.title_cache RLIKE '$filter'";
+			}
 
 			$start = 0;
 			$done  = false;

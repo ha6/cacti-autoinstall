@@ -18,6 +18,13 @@ Bug and feature enhancements for the webseer plugin are handled in GitHub. If yo
 
 ## ChangeLog
 
+--- 2.0 ---
+* issue#12: Add proxy support to URL's
+* issue#20: Resolve issues with Permanently Moved errors with proxy use
+
+--- 1.1 ---
+* feature: Changes to facilitate i18n by contributors
+
 --- 1.0 ---
 * issue#4: Resolving issues with Servers display
 * issue#5: Remote incorrectly assumes communications from the CLI

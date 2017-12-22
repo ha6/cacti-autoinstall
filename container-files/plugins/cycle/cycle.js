@@ -24,8 +24,8 @@
 var timerID = null
 var image   = ''
 var html    = ''
-var next    = -1
-var prev    = 1
+var nextid  = -1
+var previd  = 1
 var time    = 5
 var ltime   = 0
 var current = 0
@@ -35,6 +35,13 @@ var timed
 var newtime
 var stime
 var url
+
+var graph_width  = parseInt($(window).width() / $('#cols').val());
+var graph_height = parseInt($('#height') * (graph_width / $('#width').val()));
+
+$(window).resize(function() {
+	resizeGraphs();
+});
 
 function calcage(secs, num1, num2) {
 	return ((Math.floor(secs/num1))%num2).toString()
@@ -46,6 +53,7 @@ function formattime(secs) {
 	minutes = calcage(secs,60,60)
 	seconds = calcage(secs,1,60)
 	newtime = ''
+
 	if (days==1) { newtime=days+' Day ' }
 	if (days>1)  { newtime=days+' Days ' }
 
@@ -59,86 +67,97 @@ function formattime(secs) {
 	if (seconds>1)  { newtime=newtime+seconds+' Seconds ' }
 
 	if (newtime=='') { return '0 Seconds' }
+
 	return newtime
 }
 
 function startTime() {
-	timerID = self.setInterval('refreshTime()', 1000)
+	timerID = setInterval('refreshTime()', 1000)
 	$('#cstop').css('display', 'inline');
 	$('#cstart').css('display', 'none');
 }
 
 function stopTime() {
-	self.clearInterval(timerID)
+	clearInterval(timerID)
 	$('#cstop').css('display', 'none');
 	$('#cstart').css('display', 'inline');
 }
 
-function processAjax(url) {
-	$.get('cycle_ajax.php'+url, function(data) {
+function resizeGraphs() {
+	graph_width  = parseInt(($(window).width() - 60) / $('#cols').val());
+	if (graph_width > $('#width').val()) {
+		graph_width = $('#width').val();
+	}
+	graph_height = parseInt($('#height').val() * (graph_width / $('#width').val()));
+	$('.cycle_image').css('width', graph_width).css('height', graph_height).css('padding', '3px');
+}
+
+function loadGraphs(nextid) {
+	if ($('#tree_id').length) {
+		tree=$('#tree_id').val();
+	}else{
+		tree='';
+	}
+
+	if ($('#leaf_id').length) {
+		leaf=$('#leaf_id').val();
+	}else{
+		leaf='';
+	}
+
+	strURL = 'cycle.php?action=graphs' + 
+		'&id='       + nextid +
+		'&rfilter='  + $('#rfilter').val() +
+		'&cols='     + $('#cols').val() +
+		'&timespan=' + $('#timespan').val() +
+		'&graphs='   + $('#graphs').val() +
+		'&tree_id='  + tree +
+		'&leaf_id='  + leaf +
+		'&legend='   + $('#legend').is(':checked') +
+		'&width='    + $('#width').val() +
+		'&height='   + $('#height').val() +
+		'&delay='    + $('#delay').val();
+
+	$.get(strURL, function(data) {
 		data = $.parseJSON(data);
 
-		if (data.html)         html=data.html;	
-		if (data.image)        image=base64_decode(data.image);	
-		if (data.graphid)      current=data.graphid;
-		if (data.nextgraphid)  next=data.nextgraphid;
-		if (data.prevgraphid)  prev=data.prevgraphid;
+		if (data.image) {
+	       image = base64_decode(data.image);	
+		}
 
-		$('#izone').empty().prepend(html);
+		if (data.graphid) {
+			current = data.graphid;
+		}
+
+		if (data.nextgraphid) {
+			next = data.nextgraphid;
+		}
+
+		if (data.prevgraphid) {
+			prev = data.prevgraphid;
+		}
+
 		$('#image').html(image);
+
+		resizeGraphs();
 	});
 }
 
-function formatProcessUrl(nextid) {
-	if (clearfilter == 1) {
-		clearfilter=0;
-		filter='';
-		filter=filter + '&clear=true';
-	} else if (setfilter == 1) {
-		setfilter=0;
-
-		if ($('#filter').val()) {
-			filter=$('#filter').val();
-			filter=filter + '&set';
-		}else{
-			filter='';
-			filter=filter + '&clear';
-		}
-	} else if ($('#filter').val()) {
-		filter=$('#filter').val();
-	}else{
-		filter='';
-	}
-	if ($('#tree_id').val()) {
-		tree=$('#tree_id').val();
-	}else{
-		tree='';
-	}
-	if ($('#leaf_id').val()) {
-		leaf=$('#leaf_id').val();
-	}else{
-		leaf='';
-	}
-
-	url='?action=view&id='+nextid+'&filter='+filter+'&cols='+$('#cols').val()+'&timespan='+$('#timespan').val()+'&graphs='+$('#graphs').val()+'&tree_id='+tree+'&leaf_id='+leaf+'&legend='+$('#legend:checked').length+'&width='+$('#width').val()+'&height='+$('#height').val()+'&delay='+$('#delay').val();
-
-	processAjax(url);
-}
-
 function saveFilter() {
-	if ($('#tree_id').val()) {
+	if ($('#tree_id').length) {
 		tree=$('#tree_id').val();
 	}else{
 		tree='';
 	}
-	if ($('#leaf_id').val()) {
+
+	if ($('#leaf_id').length) {
 		leaf=$('#leaf_id').val();
 	}else{
 		leaf='';
 	}
 
-	url='cycle_ajax.php?action=save' +
-		'&filter='   + filter +
+	url='cycle.php?action=save' +
+		'&rfilter='  + $('#rfilter').val() +
 		'&cols='     + $('#cols').val() +
 		'&timespan=' + $('#timespan').val() +
 		'&graphs='   + $('#graphs').val() +
@@ -159,7 +178,7 @@ function refreshTime() {
 	$('#countdown').html(formattime(time));
 	if (time == 0) {
 		time=rtime/1000+1;
-		formatProcessUrl(next);
+		loadGraphs(next);
 	}
 	time=time-1
 }
@@ -167,67 +186,67 @@ function refreshTime() {
 function newRefresh() {
 	rtime=$('#delay').val() * 1000;
 	time=rtime/1000;
-	formatProcessUrl(current);
+	loadGraphs(current);
 }
 
 function newTimespan() {
 	time=rtime/1000;
-	formatProcessUrl(current);
+	loadGraphs(current);
 }
 
 function newGraph() {
 	rtime=$('#delay').val() * 1000;
 	time=rtime/1000;
-	formatProcessUrl(current);
+	loadGraphs(current);
 }
 
-function newTree() {
+function getNext() {
 	rtime=$('#delay').val() * 1000;
 	time=rtime/1000;
-	formatProcessUrl(current);
+	loadGraphs(next);
 }
 
-function getnext() {
+function getPrev() {
 	rtime=$('#delay').val() * 1000;
 	time=rtime/1000;
-	formatProcessUrl(next);
-}
-
-function getprev() {
-	rtime=$('#delay').val() * 1000;
-	time=rtime/1000;
-	formatProcessUrl(prev);
+	loadGraphs(prev);
 }
 
 function clearFilter() {
-	clearfilter=1;
-
-	if ($('#tree').val()) {
-		newTree();
-	}else{
-		newRefresh();
-	}
+	strURL = 'cycle.php?action=view&clear=true&header=false';
+	loadPageNoHeader(strURL, function() {
+		loadGraphs(current);
+	});
 }
 
-function setFilter() {
-	setfilter=1;
-
-	if ($('#tree').val()) {
-		newTree();
+function applyFilter() {
+	if ($('#tree_id').length) {
+		tree=$('#tree_id').val();
 	}else{
-		newRefresh();
+		tree='';
 	}
-}
 
-function processReturn(event) {
-	if (event.which == 13) {
-		setfilter=1;
-		if ($('#tree').val()) {
-			newTree();
-		}else{
-			newRefresh();
-		}
+	if ($('#leaf_id').length) {
+		leaf=$('#leaf_id').val();
+	}else{
+		leaf='';
 	}
+
+	strURL = 'cycle.php?action=view' +
+		'&header=false' +
+		'&id='       + nextid +
+		'&rfilter='  + $('#rfilter').val() +
+		'&cols='     + $('#cols').val() +
+		'&timespan=' + $('#timespan').val() +
+		'&graphs='   + $('#graphs').val() +
+		'&tree_id='  + tree +
+		'&leaf_id='  + leaf +
+		'&legend='   + $('#legend').is(':checked') +
+		'&width='    + $('#width').val() +
+		'&height='   + $('#height').val() +
+		'&delay='    + $('#delay').val();
+
+	loadPageNoHeader(strURL);
 }
 
 function base64_decode(data) {
