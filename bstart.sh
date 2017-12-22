@@ -36,11 +36,11 @@ log() {
 install_dependency_packs() {
         log "Install dependency packs"
        		mkdir -p $path/logs/
-        	curl -o /etc/yum.repos.d/CentOS-Base.repo -O http://mirrors.163.com/.help/CentOS6-Base-163.repo
+		yum install -y epel-release
+		curl -o /etc/yum.repos.d/CentOS-Base.repo -O http://mirrors.163.com/.help/CentOS6-Base-163.repo
         	rpm -Uvh http://dev.mysql.com/get/mysql-community-release-el7-5.noarch.rpm
         	rpm -Uvh https://schotty.com/yum/el/7/schotty-el7-release-7-1.noarch.rpm
 		rpm -Uvh http://rpms.famillecollet.com/enterprise/remi-release-7.rpm
-		yum install -y epel-release
 		yum clean all
         	yum makecache
 		yum install --enablerepo=remi --enablerepo=remi-php56 php php-redis php-snmp php-opcache php-devel php-mbstring php-mcrypt php-mysqlnd php-phpunit-PHPUnit php-pecl-xdebug php-pecl-xhprof  php-gmp
