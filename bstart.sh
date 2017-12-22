@@ -43,7 +43,7 @@ install_dependency_packs() {
 		rpm -Uvh http://rpms.famillecollet.com/enterprise/remi-release-7.rpm
 		yum clean all
         	yum makecache
-		yum install --enablerepo=remi --enablerepo=remi-php56 php php-redis php-snmp php-opcache php-devel php-mbstring php-mcrypt php-mysqlnd php-phpunit-PHPUnit php-pecl-xdebug php-pecl-xhprof  php-gmp
+		yum install -y --enablerepo=remi --enablerepo=remi-php56 php php-redis php-snmp php-opcache php-devel php-mbstring php-mcrypt php-mysqlnd php-phpunit-PHPUnit php-pecl-xdebug php-pecl-xhprof  php-gmp php-gd php-ldap
         	yum install -y mysql-community-server mysql-community-client  mysql-devel 
 		yum install -y automake perl-devel  gnumeric  wget gzip help2man libtool make net-snmp-devel m4 openssl-devel dos2unix redis \
         	dejavu-fonts-common dejavu-lgc-sans-mono-fonts dejavu-sans-mono-fonts   \
@@ -115,8 +115,8 @@ move_cacti() {
 move_config_files() {
     if [ -e "/config.php" ]; then
                 log "Moving Config files"
-                \cp -rf  /config.php $path/include/config.php
-                \cp -rf /global.php $path/include/global.php
+                #\cp -rf  /config.php $path/include/config.php
+                #\cp -rf /global.php $path/include/global.php
                 chown -R apache:apache $path
                 log "Config files moved"
     fi
@@ -376,9 +376,9 @@ if [[ $(mysql -e "show databases" | grep cacti) != "cacti" ]]; then
     change_auth_config
 fi
 # Update Cacti config
-update_cacti_db_config
-update_cacti_global_config
-update_spine_config
+#update_cacti_db_config
+#update_cacti_global_config
+#update_spine_config
 update_backup_config
 update_export_config
 #install_syslog
