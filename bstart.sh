@@ -55,7 +55,7 @@ install_dependency_packs() {
 install_rrdtool() {
         log "### Install rrdtool###"
     		mkdir -p /rrdtool/ && rm -rf /rrdtool/*
-  	  	wget -O /packages/rrdtool/rrdtool.tar.gz  http://oss.oetiker.ch/rrdtool/pub/rrdtool-1.7.0.tar.gz 
+  	  	rm -rf /packages/rrdtool/* &&  wget -O /packages/rrdtool/rrdtool.tar.gz  http://oss.oetiker.ch/rrdtool/pub/rrdtool-1.7.0.tar.gz 
     		tar zxvf /packages/rrdtool/rrdtool*.tar.gz -C /rrdtool --strip-components=1
     		cd /rrdtool/
         	sed -i "s/RRDTOOL \/ TOBI OETIKER/$rrdlogo/g" src/rrd_graph.c
@@ -69,7 +69,7 @@ install_rrdtool() {
 
 install_cacti() {
         log "### ### Install cacti"
-        	wget -O /packages/cacti/cacti.tar.gz   http://www.cacti.net/downloads/cacti-$CACTI_VER.tar.gz 
+        	rm -rf /packages/cacti/* && wget -O /packages/cacti/cacti.tar.gz   http://www.cacti.net/downloads/cacti-$CACTI_VER.tar.gz 
         	mkdir -p /cacti/ && rm -rf /cacti/*
         	tar zxvf /packages/cacti/cacti*.tar.gz -C /cacti --strip-components=1
     		rm -rf /packages/cacti/cacti*.tar.gz
@@ -79,7 +79,7 @@ install_cacti() {
 
 install_spine() {
         log "### ### Install spine"
-    		wget -O /packages/spine/cacti-spine.tar.gz http://www.cacti.net/downloads/spine/cacti-spine-$CACTI_VER.tar.gz
+    		rm -rf /packages/spine/* && wget -O /packages/spine/cacti-spine.tar.gz http://www.cacti.net/downloads/spine/cacti-spine-$CACTI_VER.tar.gz
     		mkdir -p /spine && rm -rf /spine/*
     		tar xf /packages/spine/cacti-spine*.gz -C /spine --strip-components=1
     		rm -f /packages/spine/cacti-spine*.tar.gz
