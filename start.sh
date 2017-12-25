@@ -389,7 +389,7 @@ fi
 update_backup_config
 update_export_config
 install_syslog
-load_temple_config
+#load_temple_config
 update_cron
 update_httpd
 
