@@ -139,8 +139,8 @@ download_install_plugins() {
         mkdir -p $dir_path/container-files/plugins/
         cd $dir_path/container-files/plugins/
         #git clone https://github.com/Cacti/plugin_syslog.git
-                if [ ! -d "monitor" ]; then
-                git clone https://github.com/Cacti/plugin_monitor.git
+        if [ ! -d "monitor" ]; then
+        	git clone https://github.com/Cacti/plugin_monitor.git
                 mv plugin_monitor monitor
         fi
         if [ ! -d "audit" ]; then
@@ -203,7 +203,8 @@ download_install_plugins() {
                 
 create_db(){
     log "Creating Cacti Database"
-    service mysqld restart
+	systemctl enable mysqld
+    	systemctl restart mysqld
         mysql_tzinfo_to_sql /usr/share/zoneinfo | mysql mysql
     	mysql  -e "set collation_server = utf8mb4_unicode_ci;"
    	mysql  -e "set character_set_client = utf8mb4;"
@@ -320,12 +321,13 @@ install_syslog() {
         echo '$ModLoad imtcp' >> /etc/rsyslog.conf
         echo '$UDPServerRun 514' >> /etc/rsyslog.conf
         echo '$ModLoad ommysql' >> /etc/rsyslog.conf
-	 echo "\$template cacti_syslog,\"INSERT INTO syslog_incoming(facility, priority, date, time, host, message) values (%syslogfacility%, %syslogpriority%, '%timereported:::date-mysql%', '%timereported:::date-mysql%', '%HOSTNAME%', '%msg%')\", SQL" >> /etc/rsyslog.conf
-	echo '*.*   >localhost,syslog,cactiuser,cactiuser;cacti_syslog' >> /etc/rsyslog.conf
-        echo '*.*   /var/log/syslog.log' >> /etc/rsyslog.conf
+        echo "\$template cacti_syslog,\"INSERT INTO syslog_incoming(facility_id, priority_id, program, date, time, host, message) \\ " >> /etc/rsyslog.conf
+        echo "values (%syslogfacility%, %syslogpriority%, '%programname%', '%timereported:::date-mysql%', '%timereported:::date-mysql%', '%HOSTNAME%', TRIM('%msg%'))\" , SQL" >> /etc/rsyslog.conf
+        echo '*.*   >localhost,syslog,cactiuser,cactiuser;cacti_syslog' >> /etc/rsyslog.conf
         chkconfig rsyslog on
-        service rsyslog restart
-        }
+        systemctl enable rsyslog
+        systemctl restart rsyslog
+	}
 
 change_auth_config() {
         log "change export auth file"
@@ -386,12 +388,11 @@ fi
 #update_spine_config
 update_backup_config
 update_export_config
-#install_syslog
+install_syslog
 load_temple_config
 update_cron
 update_httpd
 
-systemctl enable mysqld
 systemctl enable httpd
 systemctl enable crond
 systemctl enable snmpd
