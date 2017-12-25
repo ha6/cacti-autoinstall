@@ -373,7 +373,7 @@ install_spine
 move_cacti
 move_config_files
 install_plugins
-#download_install_plugins
+download_install_plugins
 # Check Database Status and update if needed
 if [[ $(mysql -e "show databases" | grep cacti) != "cacti" ]]; then
     create_db
@@ -407,7 +407,5 @@ firewall-cmd --zone=public --add-port=80/tcp --permanent
 firewall-cmd --zone=public --add-port=3306/tcp --permanent
 firewall-cmd --reload
 setenforce 0
-
 /usr/bin/php /var/www/html/poller.php --force
-
 log "Cacti Server UP."
